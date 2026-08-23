@@ -3,119 +3,154 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>モバイルオーダーアプリ</title>
-  <!-- ReactとBabel（HTML内でReactを動かすためのライブラリ）を読み込み -->
+  <title>モバイルオーダー - ご注文</title>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body { margin: 0; font-family: sans-serif; background-color: #f5f5f5; }
-    button { cursor: pointer; }
+    body {
+      margin: 0;
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      background-color: #fff9f0;
+      color: #4a3b32;
+    }
+    button {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      cursor: pointer;
+      border: none;
+      border-radius: 12px;
+      font-weight: bold;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    button:active { transform: scale(0.96); }
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ff6b6b;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(255,107,107,0.3);
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect } = React;
 
-    const INITIAL_PRODUCTS = [
-      { id: 'item-01', name: 'チーズバーガー', price: 500, category: 'main' },
-      { id: 'item-02', name: 'ポテト (L)', price: 350, category: 'side' },
-      { id: 'item-03', name: 'アイスコーヒー', price: 250, category: 'drink' }
+    const PRODUCTS = [
+      { id: 'item-01', name: '絶品チーズバーガー', price: 680, icon: '🍔' },
+      { id: 'item-02', name: 'サクサクポテト (L)', price: 380, icon: '🍟' },
+      { id: 'item-03', name: '濃厚アイスコーヒー', price: 300, icon: '🥤' }
     ];
 
-    function MobileOrderApp() {
-      const [products] = useState(INITIAL_PRODUCTS);
+    function CustomerApp() {
       const [cart, setCart] = useState([]);
-      const [orders, setOrders] = useState([]);
+      const [toast, setToast] = useState('');
       const [activeTab, setActiveTab] = useState('menu');
       const tableNo = 5;
 
-      const addToCart = (productId) => {
-        setCart((prev) => {
-          const existing = prev.find((item) => item.productId === productId);
-          if (existing) {
-            return prev.map((item) =>
-              item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item
-            );
-          }
-          return [...prev, { productId, quantity: 1 }];
-        });
+      const showNotification = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(''), 2000);
       };
 
-      const updateQuantity = (productId, delta) => {
+      const addToCart = (product) => {
+        setCart((prev) => {
+          const existing = prev.find((item) => item.id === product.id);
+          if (existing) {
+            return prev.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+          }
+          return [...prev, { ...product, quantity: 1 }];
+        });
+        showNotification(`✨ ${product.name} を追加しました！`);
+      };
+
+      const updateQuantity = (id, delta) => {
         setCart((prev) =>
-          prev
-            .map((item) => {
-              if (item.productId === productId) {
-                const newQty = item.quantity + delta;
-                return newQty > 0 ? { ...item, quantity: newQty } : null;
-              }
-              return item;
-            })
-            .filter(Boolean)
+          prev.map((item) => {
+            if (item.id === id) {
+              const q = item.quantity + delta;
+              return q > 0 ? { ...item, quantity: q } : null;
+            }
+            return item;
+          }).filter(Boolean)
         );
       };
 
       const submitOrder = () => {
         if (cart.length === 0) return;
 
-        const orderItems = cart.map((cartItem) => {
-          const product = products.find((p) => p.id === cartItem.productId);
-          return {
-            productId: product.id,
-            name: product.name,
-            price: product.price,
-            quantity: cartItem.quantity
-          };
-        });
-
-        const totalAmount = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
+        const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const newOrder = {
           orderId: `ORD-${Date.now().toString().slice(-4)}`,
           tableNo,
-          items: orderItems,
+          items: cart,
           totalAmount,
           status: 'pending',
           createdAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
         };
 
-        setOrders((prev) => [newOrder, ...prev]);
+        // ローカルストレージを使って厨房にデータを共有
+        const existingOrders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
+        localStorage.setItem('restaurant_orders', JSON.stringify([newOrder, ...existingOrders]));
+
         setCart([]);
-        setActiveTab('kitchen');
+        showNotification('🎉 注文を送信しました！');
+        setActiveTab('menu');
       };
 
-      const updateOrderStatus = (orderId, nextStatus) => {
-        setOrders((prev) =>
-          prev.map((order) => (order.orderId === orderId ? { ...order, status: nextStatus } : order))
-        );
+      const requestCheckout = () => {
+        const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        
+        // 会計リクエストを作成
+        const checkoutReq = {
+          tableNo,
+          requestedAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+          status: 'checkout_requested'
+        };
+        
+        const existingCheckouts = JSON.parse(localStorage.getItem('restaurant_checkouts') || '[]');
+        localStorage.setItem('restaurant_checkouts', JSON.stringify([checkoutReq, ...existingCheckouts]));
+
+        alert('お会計リクエストを受け付けました。\n伝票をお持ちの上、レジへお越しください！');
       };
 
       const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-      const cartTotalAmount = cart.reduce((sum, cartItem) => {
-        const product = products.find((p) => p.id === cartItem.productId);
-        return sum + (product ? product.price * cartItem.quantity : 0);
-      }, 0);
+      const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
       return (
-        <div style={{ maxWidth: '480px', margin: '0 auto', background: '#fff', minHeight: '100vh', paddingBottom: '60px', position: 'relative' }}>
-          <header style={{ background: '#333', color: '#fff', padding: '12px', textAlign: 'center' }}>
-            <h1 style={{ margin: 0, fontSize: '18px' }}>モバイルオーダー (卓番: {tableNo})</h1>
+        <div style={{ maxWidth: '480px', margin: '0 auto', background: '#fff', minHeight: '100vh', boxShadow: '0 0 20px rgba(0,0,0,0.05)', position: 'relative' }}>
+          {toast && <div className="toast">{toast}</div>}
+
+          {/* ヘッダー */}
+          <header style={{ background: 'linear-gradient(135deg, #ff9f43, #ff5252)', color: '#fff', padding: '16px', textAlign: 'center', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
+            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>🍔 MOBILE ORDER</h1>
+            <div style={{ fontSize: '13px', marginTop: '4px', opacity: 0.9 }}>テーブル番号: {tableNo}</div>
           </header>
 
-          <main style={{ padding: '16px' }}>
+          {/* メインエリア */}
+          <main style={{ padding: '20px', paddingBottom: '120px' }}>
             {activeTab === 'menu' && (
               <div>
-                <h2>メニュー一覧</h2>
-                {products.map((product) => (
-                  <div key={product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #ddd' }}>
-                    <div>
-                      <strong>{product.name}</strong>
-                      <div>¥{product.price.toLocaleString()}</div>
+                <h2 style={{ fontSize: '18px', color: '#ff6b6b', marginTop: 0 }}>メニュー</h2>
+                {PRODUCTS.map((product) => (
+                  <div key={product.id} style={{ display: 'flex', alignItems: 'center', background: '#fff9f0', padding: '14px', borderRadius: '16px', marginBottom: '12px', border: '1px solid #ffeaa7' }}>
+                    <span style={{ fontSize: '32px', marginRight: '12px' }}>{product.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 'bold' }}>{product.name}</div>
+                      <div style={{ color: '#ff5252', fontWeight: 'bold' }}>¥{product.price.toLocaleString()}</div>
                     </div>
-                    <button onClick={() => addToCart(product.id)} style={{ padding: '6px 12px', background: '#007bff', color: '#fff', border: 'none', borderRadius: '4px' }}>
+                    <button onClick={() => addToCart(product)} style={{ background: '#ff9f43', color: '#fff', padding: '8px 16px', fontSize: '14px' }}>
                       追加
                     </button>
                   </div>
@@ -125,91 +160,53 @@
 
             {activeTab === 'cart' && (
               <div>
-                <h2>ご注文内容の確認</h2>
+                <h2 style={{ fontSize: '18px', color: '#ff6b6b', marginTop: 0 }}>カートの確認</h2>
                 {cart.length === 0 ? (
-                  <p>カートに商品が入っていません。</p>
+                  <p style={{ textAlign: 'center', color: '#aaa', marginTop: '40px' }}>カートは空です 🛒</p>
                 ) : (
                   <div>
-                    {cart.map((cartItem) => {
-                      const product = products.find((p) => p.id === cartItem.productId);
-                      return (
-                        <div key={cartItem.productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #ddd' }}>
-                          <div>
-                            <div><strong>{product?.name}</strong></div>
-                            <div>¥{product?.price.toLocaleString()}</div>
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <button onClick={() => updateQuantity(cartItem.productId, -1)}>-</button>
-                            <span>{cartItem.quantity}</span>
-                            <button onClick={() => updateQuantity(cartItem.productId, 1)}>+</button>
-                          </div>
+                    {cart.map((item) => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', padding: '12px 0' }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold' }}>{item.name}</div>
+                          <div style={{ color: '#888', fontSize: '13px' }}>¥{item.price.toLocaleString()}</div>
                         </div>
-                      );
-                    })}
-                    <div style={{ marginTop: '20px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }}>
-                      合計: ¥{cartTotalAmount.toLocaleString()}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button onClick={() => updateQuantity(item.id, -1)} style={{ background: '#eee', color: '#333', width: '28px', height: '28px' }}>-</button>
+                          <span style={{ fontWeight: 'bold' }}>{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, 1)} style={{ background: '#eee', color: '#333', width: '28px', height: '28px' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: '24px', textAlign: 'right', fontSize: '20px', fontWeight: '800', color: '#ff5252' }}>
+                      合計: ¥{cartTotal.toLocaleString()}
                     </div>
-                    <button onClick={submitOrder} style={{ width: '100%', padding: '12px', marginTop: '16px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '16px' }}>
+                    <button onClick={submitOrder} style={{ width: '100%', background: '#ff5252', color: '#fff', padding: '14px', fontSize: '16px', marginTop: '16px', boxShadow: '0 4px 12px rgba(255,82,82,0.3)' }}>
                       注文を確定する
                     </button>
                   </div>
                 )}
               </div>
             )}
-
-            {activeTab === 'kitchen' && (
-              <div>
-                <h2>注文管理 (厨房端末)</h2>
-                {orders.length === 0 ? (
-                  <p>現在注文はありません。</p>
-                ) : (
-                  orders.map((order) => (
-                    <div key={order.orderId} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '12px', marginBottom: '12px', background: order.status === 'completed' ? '#f8f9fa' : '#fff' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                        <span>{order.orderId} (卓番: {order.tableNo})</span>
-                        <span>{order.createdAt}</span>
-                      </div>
-                      <hr style={{ margin: '8px 0' }} />
-                      <ul>
-                        {order.items.map((item, idx) => (
-                          <li key={idx}>{item.name} × {item.quantity}</li>
-                        ))}
-                      </ul>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
-                        <span>状態: <strong>{order.status}</strong></span>
-                        <div>
-                          {order.status === 'pending' && (
-                            <button onClick={() => updateOrderStatus(order.orderId, 'preparing')}>調理中に変更</button>
-                          )}
-                          {order.status === 'preparing' && (
-                            <button onClick={() => updateOrderStatus(order.orderId, 'completed')}>提供済に変更</button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
           </main>
 
-          <footer style={{ position: 'fixed', bottom: 0, width: '100%', maxWidth: '480px', display: 'flex', background: '#fff', borderTop: '1px solid #ccc' }}>
-            <button onClick={() => setActiveTab('menu')} style={{ flex: 1, padding: '12px', border: 'none', background: activeTab === 'menu' ? '#eee' : '#fff' }}>
+          {/* 固定フッター */}
+          <footer style={{ position: 'fixed', bottom: 0, width: '100%', maxWidth: '480px', background: '#fff', borderTop: '2px solid #ffeaa7', display: 'flex', gap: '8px', padding: '10px 16px', boxSizing: 'border-box' }}>
+            <button onClick={() => setActiveTab('menu')} style={{ flex: 1, padding: '10px', background: activeTab === 'menu' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}>
               メニュー
             </button>
-            <button onClick={() => setActiveTab('cart')} style={{ flex: 1, padding: '12px', border: 'none', background: activeTab === 'cart' ? '#eee' : '#fff' }}>
-              カート ({cartItemCount})
+            <button onClick={() => setActiveTab('cart')} style={{ flex: 1, padding: '10px', background: activeTab === 'cart' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32', position: 'relative' }}>
+              カート {cartItemCount > 0 && <span style={{ background: '#ff5252', color: '#fff', borderRadius: '10px', padding: '2px 6px', fontSize: '11px', marginLeft: '4px' }}>{cartItemCount}</span>}
             </button>
-            <button onClick={() => setActiveTab('kitchen')} style={{ flex: 1, padding: '12px', border: 'none', background: activeTab === 'kitchen' ? '#eee' : '#fff' }}>
-              厨房管理
+            <button onClick={requestCheckout} style={{ flex: 1, padding: '10px', background: '#54a0ff', color: '#fff' }}>
+              お会計
             </button>
           </footer>
         </div>
       );
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<MobileOrderApp />);
+    ReactDOM.createRoot(document.getElementById('root')).render(<CustomerApp />);
   </script>
 </body>
 </html>
