@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>モバイルオーダーアプリ</title>
+  <!-- ReactとBabel（HTML内でReactを動かすためのライブラリ）を読み込み -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; font-family: sans-serif; background-color: #f5f5f5; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const INITIAL_PRODUCTS = [
+      { id: 'item-01', name: 'チーズバーガー', price: 500, category: 'main' },
+      { id: 'item-02', name: 'ポテト (L)', price: 350, category: 'side' },
+      { id: 'item-03', name: 'アイスコーヒー', price: 250, category: 'drink' }
+    ];
+
+    function MobileOrderApp() {
+      const [products] = useState(INITIAL_PRODUCTS);
+      const [cart, setCart] = useState([]);
+      const [orders, setOrders] = useState([]);
+      const [activeTab, setActiveTab] = useState('menu');
+      const tableNo = 5;
+
+      const addToCart = (productId) => {
+        setCart((prev) => {
+          const existing = prev.find((item) => item.productId === productId);
+          if (existing) {
+            return prev.map((item) =>
+              item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item
+            );
+          }
+          return [...prev, { productId, quantity: 1 }];
+        });
+      };
+
+      const updateQuantity = (productId, delta) => {
+        setCart((prev) =>
+          prev
+            .map((item) => {
+              if (item.productId === productId) {
+                const newQty = item.quantity + delta;
+                return newQty > 0 ? { ...item, quantity: newQty } : null;
+              }
+              return item;
+            })
+            .filter(Boolean)
+        );
+      };
+
+      const submitOrder = () => {
+        if (cart.length === 0) return;
+
+        const orderItems = cart.map((cartItem) => {
+          const product = products.find((p) => p.id === cartItem.productId);
+          return {
+            productId: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: cartItem.quantity
+          };
+        });
+
+        const totalAmount = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+        const newOrder = {
+          orderId: `ORD-${Date.now().toString().slice(-4)}`,
+          tableNo,
+          items: orderItems,
+          totalAmount,
+          status: 'pending',
+          createdAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setOrders((prev) => [newOrder, ...prev]);
+        setCart([]);
+        setActiveTab('kitchen');
+      };
+
+      const updateOrderStatus = (orderId, nextStatus) => {
+        setOrders((prev) =>
+          prev.map((order) => (order.orderId === orderId ? { ...order, status: nextStatus } : order))
+        );
+      };
+
+      const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+      const cartTotalAmount = cart.reduce((sum, cartItem) => {
+        const product = products.find((p) => p.id === cartItem.productId);
+        return sum + (product ? product.price * cartItem.quantity : 0);
+      }, 0);
+
+      return (
+        <div style={{ maxWidth: '480px', margin: '0 auto', background: '#fff', minHeight: '100vh', paddingBottom: '60px', position: 'relative' }}>
+          <header style={{ background: '#333', color: '#fff', padding: '12px', textAlign: 'center' }}>
+            <h1 style={{ margin: 0, fontSize: '18px' }}>モバイルオーダー (卓番: {tableNo})</h1>
+          </header>
+
+          <main style={{ padding: '16px' }}>
+            {activeTab === 'menu' && (
+              <div>
+                <h2>メニュー一覧</h2>
+                {products.map((product) => (
+                  <div key={product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #ddd' }}>
+                    <div>
+                      <strong>{product.name}</strong>
+                      <div>¥{product.price.toLocaleString()}</div>
+                    </div>
+                    <button onClick={() => addToCart(product.id)} style={{ padding: '6px 12px', background: '#007bff', color: '#fff', border: 'none', borderRadius: '4px' }}>
+                      追加
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'cart' && (
+              <div>
+                <h2>ご注文内容の確認</h2>
+                {cart.length === 0 ? (
+                  <p>カートに商品が入っていません。</p>
+                ) : (
+                  <div>
+                    {cart.map((cartItem) => {
+                      const product = products.find((p) => p.id === cartItem.productId);
+                      return (
+                        <div key={cartItem.productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #ddd' }}>
+                          <div>
+                            <div><strong>{product?.name}</strong></div>
+                            <div>¥{product?.price.toLocaleString()}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button onClick={() => updateQuantity(cartItem.productId, -1)}>-</button>
+                            <span>{cartItem.quantity}</span>
+                            <button onClick={() => updateQuantity(cartItem.productId, 1)}>+</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{ marginTop: '20px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }}>
+                      合計: ¥{cartTotalAmount.toLocaleString()}
+                    </div>
+                    <button onClick={submitOrder} style={{ width: '100%', padding: '12px', marginTop: '16px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '16px' }}>
+                      注文を確定する
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'kitchen' && (
+              <div>
+                <h2>注文管理 (厨房端末)</h2>
+                {orders.length === 0 ? (
+                  <p>現在注文はありません。</p>
+                ) : (
+                  orders.map((order) => (
+                    <div key={order.orderId} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '12px', marginBottom: '12px', background: order.status === 'completed' ? '#f8f9fa' : '#fff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                        <span>{order.orderId} (卓番: {order.tableNo})</span>
+                        <span>{order.createdAt}</span>
+                      </div>
+                      <hr style={{ margin: '8px 0' }} />
+                      <ul>
+                        {order.items.map((item, idx) => (
+                          <li key={idx}>{item.name} × {item.quantity}</li>
+                        ))}
+                      </ul>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+                        <span>状態: <strong>{order.status}</strong></span>
+                        <div>
+                          {order.status === 'pending' && (
+                            <button onClick={() => updateOrderStatus(order.orderId, 'preparing')}>調理中に変更</button>
+                          )}
+                          {order.status === 'preparing' && (
+                            <button onClick={() => updateOrderStatus(order.orderId, 'completed')}>提供済に変更</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </main>
+
+          <footer style={{ position: 'fixed', bottom: 0, width: '100%', maxWidth: '480px', display: 'flex', background: '#fff', borderTop: '1px solid #ccc' }}>
+            <button onClick={() => setActiveTab('menu')} style={{ flex: 1, padding: '12px', border: 'none', background: activeTab === 'menu' ? '#eee' : '#fff' }}>
+              メニュー
+            </button>
+            <button onClick={() => setActiveTab('cart')} style={{ flex: 1, padding: '12px', border: 'none', background: activeTab === 'cart' ? '#eee' : '#fff' }}>
+              カート ({cartItemCount})
+            </button>
+            <button onClick={() => setActiveTab('kitchen')} style={{ flex: 1, padding: '12px', border: 'none', background: activeTab === 'kitchen' ? '#eee' : '#fff' }}>
+              厨房管理
+            </button>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<MobileOrderApp />);
+  </script>
+</body>
+</html>
