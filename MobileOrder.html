@@ -81,7 +81,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState } = React;
 
     const PRODUCTS = [
       { id: 'item-01', name: '絶品チーズバーガー', price: 680, category: 'main', icon: '🍔' },
@@ -156,6 +156,7 @@
         setActiveTab('menu');
       };
 
+      // お会計画面へ移動＆厨房へ通信
       const requestCheckout = () => {
         if (orderedTotal === 0) return;
 
@@ -169,7 +170,17 @@
         const existingCheckouts = JSON.parse(localStorage.getItem('restaurant_checkouts') || '[]');
         localStorage.setItem('restaurant_checkouts', JSON.stringify([checkoutReq, ...existingCheckouts]));
 
-        alert(`お会計金額: ¥${orderedTotal.toLocaleString()}\n\nお会計リクエストを受け付けました。\n伝票をお持ちの上、レジへお越しください！`);
+        setActiveTab('checkout');
+      };
+
+      // スタッフ用リセット機能
+      const handleStaffReset = () => {
+        if (confirm('【店員用操作】\nこのテーブルのお会計を完了し、初期画面に戻しますか？')) {
+          setOrderedTotal(0);
+          setCart([]);
+          setActiveTab('welcome');
+          showNotification('退店・リセットが完了しました');
+        }
       };
 
       const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -190,7 +201,7 @@
           </header>
 
           {/* メインエリア */}
-          <main style={{ padding: '20px', paddingBottom: '120px' }}>
+          <main style={{ padding: '20px', paddingBottom: activeTab === 'checkout' ? '40px' : '120px' }}>
             {activeTab === 'welcome' && (
               <div style={{ textAlign: 'center', paddingTop: '20px' }}>
                 <h2 style={{ fontSize: '24px', color: '#ff6b6b', marginBottom: '8px' }}>いらっしゃいませ！✨</h2>
@@ -284,34 +295,66 @@
                 )}
               </div>
             )}
+
+            {/* お会計専用ページ */}
+            {activeTab === 'checkout' && (
+              <div style={{ textAlign: 'center', paddingTop: '20px' }}>
+                <div style={{ fontSize: '48px', marginBottom: '8px' }}>💳</div>
+                <h2 style={{ fontSize: '22px', color: '#2f3640', marginBottom: '24px' }}>お会計のお願い</h2>
+                
+                <div style={{ background: '#fff9f0', border: '2px dashed #ff9f43', borderRadius: '20px', padding: '24px', marginBottom: '32px' }}>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>お支払い合計金額</div>
+                  <div style={{ fontSize: '42px', fontWeight: '800', color: '#ff5252', letterSpacing: '1px' }}>
+                    ¥{orderedTotal.toLocaleString()}
+                  </div>
+                </div>
+
+                <p style={{ color: '#666', fontSize: '14px', lineHeight: '1.6', marginBottom: '40px' }}>
+                  伝票をお持ちの上、レジまでお越しください。<br />
+                  ご来店ありがとうございました！✨
+                </p>
+
+                {/* スタッフ専用リセットボタン */}
+                <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #eee' }}>
+                  <button 
+                    onClick={handleStaffReset} 
+                    style={{ width: '100%', background: '#718093', color: '#fff', padding: '14px', fontSize: '14px' }}
+                  >
+                    【店員専用】お会計完了・テーブルリセット
+                  </button>
+                </div>
+              </div>
+            )}
           </main>
 
-          {/* 固定フッター */}
-          <footer style={{ position: 'fixed', bottom: 0, width: '100%', maxWidth: '480px', background: '#fff', borderTop: '2px solid #ffeaa7', display: 'flex', gap: '8px', padding: '10px 16px', boxSizing: 'border-box' }}>
-            <button onClick={() => setActiveTab('menu')} style={{ flex: 1, padding: '10px', background: activeTab === 'menu' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}>
-              メニュー
-            </button>
-            
-            <div style={{ flex: 1, position: 'relative' }}>
-              {showBubble && activeTab !== 'cart' && (
-                <div className="tooltip-bubble">確定を押してください！</div>
-              )}
-              <button 
-                onClick={() => { setActiveTab('cart'); setShowBubble(false); }} 
-                style={{ width: '100%', height: '100%', padding: '10px', background: activeTab === 'cart' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}
-              >
-                カート {cartItemCount > 0 && <span style={{ background: '#ff5252', color: '#fff', borderRadius: '10px', padding: '2px 6px', fontSize: '11px', marginLeft: '4px' }}>{cartItemCount}</span>}
+          {/* 固定フッター（お会計ページでは非表示） */}
+          {activeTab !== 'checkout' && (
+            <footer style={{ position: 'fixed', bottom: 0, width: '100%', maxWidth: '480px', background: '#fff', borderTop: '2px solid #ffeaa7', display: 'flex', gap: '8px', padding: '10px 16px', boxSizing: 'border-box' }}>
+              <button onClick={() => setActiveTab('menu')} style={{ flex: 1, padding: '10px', background: activeTab === 'menu' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}>
+                メニュー
               </button>
-            </div>
+              
+              <div style={{ flex: 1, position: 'relative' }}>
+                {showBubble && activeTab !== 'cart' && (
+                  <div className="tooltip-bubble">確定を押してください！</div>
+                )}
+                <button 
+                  onClick={() => { setActiveTab('cart'); setShowBubble(false); }} 
+                  style={{ width: '100%', height: '100%', padding: '10px', background: activeTab === 'cart' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}
+                >
+                  カート {cartItemCount > 0 && <span style={{ background: '#ff5252', color: '#fff', borderRadius: '10px', padding: '2px 6px', fontSize: '11px', marginLeft: '4px' }}>{cartItemCount}</span>}
+                </button>
+              </div>
 
-            <button 
-              onClick={requestCheckout} 
-              disabled={orderedTotal === 0}
-              style={{ flex: 1, padding: '10px', background: '#54a0ff', color: '#fff' }}
-            >
-              お会計
-            </button>
-          </footer>
+              <button 
+                onClick={requestCheckout} 
+                disabled={orderedTotal === 0}
+                style={{ flex: 1, padding: '10px', background: '#54a0ff', color: '#fff' }}
+              >
+                お会計
+              </button>
+            </footer>
+          )}
         </div>
       );
     }
