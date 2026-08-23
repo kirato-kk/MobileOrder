@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>モバイルオーダー - ご注文</title>
+  <title>モバイルオーダー - Mobile Order</title>
   <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -12,350 +12,363 @@
     body {
       margin: 0;
       font-family: 'M PLUS Rounded 1c', sans-serif;
-      background-color: #fff9f0;
-      color: #4a3b32;
+      background-color: #f8f9fa;
+      color: #2f3640;
+      user-select: none;
+      padding-bottom: 80px;
     }
     button {
       font-family: 'M PLUS Rounded 1c', sans-serif;
       cursor: pointer;
       border: none;
-      border-radius: 12px;
+      border-radius: 8px;
       font-weight: bold;
       transition: transform 0.1s, opacity 0.2s;
     }
-    button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    button:active:not(:disabled) { transform: scale(0.96); }
-    
-    .toast {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #ff6b6b;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 20px;
-      font-weight: bold;
-      box-shadow: 0 4px 12px rgba(255,107,107,0.3);
-      z-index: 1000;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .tooltip-bubble {
-      position: absolute;
-      top: -45px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #ff5252;
-      color: white;
-      padding: 6px 12px;
+    button:active { transform: scale(0.95); }
+    .badge-highlight {
+      background: linear-gradient(45deg, #ff4757, #ff6b81);
+      color: #fff;
+      padding: 2px 8px;
       border-radius: 12px;
-      font-size: 12px;
-      font-weight: bold;
-      white-space: nowrap;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-      animation: bounce 0.6s infinite alternate;
-      z-index: 100;
+      font-size: 10px;
+      font-weight: 800;
     }
-    .tooltip-bubble::after {
-      content: '';
-      position: absolute;
-      bottom: -6px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-width: 6px 6px 0;
-      border-style: solid;
-      border-color: #ff5252 transparent;
-      display: block;
-      width: 0;
-    }
-
-    @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-    @keyframes bounce { from { transform: translate(-50%, 0); } to { transform: translate(-50%, -6px); } }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect } = React;
 
-    const PRODUCTS = [
-      { id: 'item-01', name: '絶品チーズバーガー', price: 680, category: 'main', icon: '🍔' },
-      { id: 'item-02', name: '濃厚てりやきバーガー', price: 650, category: 'main', icon: '🍔' },
-      { id: 'item-03', name: 'サクサクポテト (L)', price: 380, category: 'side', icon: '🍟' },
-      { id: 'item-04', name: '濃厚アイスクリーム', price: 350, category: 'dessert', icon: '🍨' },
-      { id: 'item-05', name: 'チョコパフェ', price: 580, category: 'dessert', icon: '🍧' },
-      { id: 'item-06', name: '濃厚アイスコーヒー', price: 300, category: 'drink', icon: '🥤' },
-      { id: 'item-07', name: 'オレンジジュース', price: 280, category: 'drink', icon: '🍊' },
-      { id: 'item-08', name: 'おしぼり追加', price: 0, category: 'other', icon: '🧻' },
+    // 音演出ライブラリ（Web Audio API）
+    const soundEffects = {
+      click: () => playTone(600, 0.05, 'sine'),
+      add: () => playTone(880, 0.1, 'sine'),
+      cart: () => { playTone(523, 0.08, 'triangle'); setTimeout(() => playTone(659, 0.08, 'triangle'), 80); },
+      order: () => {
+        playTone(523, 0.1, 'sine');
+        setTimeout(() => playTone(659, 0.1, 'sine'), 100);
+        setTimeout(() => playTone(784, 0.15, 'sine'), 200);
+      },
+      call: () => playTone(1046, 0.2, 'square'),
+      lang: () => playTone(440, 0.08, 'sine')
+    };
+
+    function playTone(freq, duration, type) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch(e) {}
+    }
+
+    // 辞書（10. 言語切り替え）
+    const i18n = {
+      ja: {
+        title: 'モバイルオーダー',
+        table: '卓',
+        cart: 'カート',
+        orderBtn: '注文を確定する',
+        checkout: 'お会計を呼ぶ',
+        dutch: '割り勘計算',
+        callService: '店員呼び出し',
+        water: 'お水',
+        spoons: '取り皿',
+        status: 'リアルタイム注文状況',
+        recommend: '💡 おすすめの逸品',
+        customize: 'カスタマイズ選択',
+        allergy: 'アレルゲン'
+      },
+      en: {
+        title: 'Mobile Order',
+        table: 'Table',
+        cart: 'Cart',
+        orderBtn: 'Place Order',
+        checkout: 'Request Bill',
+        dutch: 'Split Bill',
+        callService: 'Service Call',
+        water: 'Water',
+        spoons: 'Plates',
+        status: 'Realtime Order Status',
+        recommend: '💡 Recommended Item',
+        customize: 'Customize',
+        allergy: 'Allergens'
+      }
+    };
+
+    // メニューデータ（3. 表記・アレルゲン & 6. ハイライト）
+    const menuData = [
+      { id: 1, name: { ja: '特製醤油ラーメン', en: 'Shoyu Ramen' }, price: 980, category: 'food', highlight: '人気No.1', allergy: '小麦・大豆', desc: '濃厚なコクとキレのあるスープ' },
+      { id: 2, name: { ja: '黄金チャーハン', en: 'Fried Rice' }, price: 750, category: 'food', highlight: '厨房推し', allergy: '卵・豚肉', desc: 'パラパラ食感の絶品炒飯' },
+      { id: 3, name: { ja: '生ビール', en: 'Draft Beer' }, price: 550, category: 'drink', highlight: 'キンキン', allergy: 'なし', desc: '最高の一杯' },
+      { id: 4, name: { ja: '烏龍茶', en: 'Oolong Tea' }, price: 300, category: 'drink', highlight: '', allergy: 'なし', desc: 'すっきり爽やか' }
     ];
 
-    function CustomerApp() {
+    function MobileOrderApp() {
+      const [tableNo] = useState('05');
+      const [lang, setLang] = useState('ja'); // 10. 言語
+      const [category, setCategory] = useState('all'); // 2. 切り替え
       const [cart, setCart] = useState([]);
-      const [toast, setToast] = useState('');
-      const [showBubble, setShowBubble] = useState(false);
-      const [activeTab, setActiveTab] = useState('welcome');
-      const [selectedCategory, setSelectedCategory] = useState('all');
-      const [orderedTotal, setOrderedTotal] = useState(0);
-      const tableNo = 5;
+      const [myOrders, setMyOrders] = useState([]);
+      const [soldOuts, setSoldOuts] = useState([]);
+      const [selectedItem, setSelectedItem] = useState(null); // 7. カスタマイズ
+      const [customOptions, setCustomOptions] = useState({ noodle: '普通', taste: '普通' });
+      const [showSplit, setShowSplit] = useState(false); // 8. 割り勘
+      const [splitCount, setSplitCount] = useState(2);
 
-      const showNotification = (msg) => {
-        setToast(msg);
-        setTimeout(() => setToast(''), 2000);
+      const t = i18n[lang];
+
+      // 1. リアルタイム監視 & 厨房同期
+      const loadData = () => {
+        const savedOrders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
+        const savedSoldout = JSON.parse(localStorage.getItem('restaurant_soldout') || '[]');
+
+        // 自卓の注文履歴を可視化（4. 可視化）
+        const myTableOrders = savedOrders.filter(o => o.tableNo === tableNo);
+        setMyOrders(myTableOrders);
+        setSoldOuts(savedSoldout);
       };
 
-      const addToCart = (product) => {
-        setCart((prev) => {
-          const existing = prev.find((item) => item.id === product.id);
-          if (existing) {
-            return prev.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-          }
-          return [...prev, { ...product, quantity: 1 }];
-        });
-        showNotification(`✨ ${product.name} を追加しました！`);
-        setShowBubble(true);
+      useEffect(() => {
+        loadData();
+        const timer = setInterval(loadData, 1000);
+        window.addEventListener('storage', loadData);
+        return () => {
+          clearInterval(timer);
+          window.removeEventListener('storage', loadData);
+        };
+      }, [tableNo]);
+
+      // カート追加
+      const addToCart = (item) => {
+        soundEffects.add();
+        setCart([...cart, { ...item, custom: { ...customOptions }, cartId: Date.now() }]);
+        setSelectedItem(null);
       };
 
-      const updateQuantity = (id, delta) => {
-        setCart((prev) =>
-          prev.map((item) => {
-            if (item.id === id) {
-              const q = item.quantity + delta;
-              return q > 0 ? { ...item, quantity: q } : null;
-            }
-            return item;
-          }).filter(Boolean)
-        );
-      };
-
+      // 注文送信
       const submitOrder = () => {
         if (cart.length === 0) return;
+        soundEffects.order();
 
-        const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const totalAmount = cart.reduce((sum, i) => sum + i.price, 0);
         const newOrder = {
-          orderId: `ORD-${Date.now().toString().slice(-4)}`,
+          orderId: `ORD_${Date.now()}`,
           tableNo,
-          items: cart,
-          totalAmount: totalAmount,
+          items: cart.map(i => ({ name: i.name[lang], quantity: 1, custom: i.custom })),
+          totalAmount,
           status: 'pending',
           createdAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
         };
 
-        const existingOrders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
-        localStorage.setItem('restaurant_orders', JSON.stringify([newOrder, ...existingOrders]));
+        const existing = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
+        localStorage.setItem('restaurant_orders', JSON.stringify([...existing, newOrder]));
 
-        setOrderedTotal((prev) => prev + totalAmount);
         setCart([]);
-        setShowBubble(false);
-        showNotification('🎉 注文を送信しました！');
-        setActiveTab('menu');
+        loadData();
       };
 
+      // 9. 店員呼び出し（お水・取り皿）
+      const callStaff = (type) => {
+        soundEffects.call();
+        alert(`${type} のリクエストを厨房に送信しました！`);
+      };
+
+      // お会計呼出
       const requestCheckout = () => {
-        if (orderedTotal === 0) return;
-
-        // 確認ダイアログの表示
-        const isConfirmed = confirm(`お会計に進みますか？\n（ご注文合計: ¥${orderedTotal.toLocaleString()}）`);
-        if (!isConfirmed) return;
-
-        const checkoutReq = {
+        soundEffects.call();
+        const total = myOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+        const checkouts = JSON.parse(localStorage.getItem('restaurant_checkouts') || '[]');
+        checkouts.push({
           tableNo,
-          totalAmount: orderedTotal,
-          requestedAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-          status: 'checkout_requested'
-        };
-        
-        const existingCheckouts = JSON.parse(localStorage.getItem('restaurant_checkouts') || '[]');
-        localStorage.setItem('restaurant_checkouts', JSON.stringify([checkoutReq, ...existingCheckouts]));
-
-        setActiveTab('checkout');
+          totalAmount: total,
+          requestedAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+        });
+        localStorage.setItem('restaurant_checkouts', JSON.stringify(checkouts));
+        alert('お会計の呼び出しを完了しました！');
       };
 
-      const handleStaffReset = () => {
-        if (confirm('【店員用操作】\nこのテーブルのお会計を完了し、初期画面に戻しますか？')) {
-          setOrderedTotal(0);
-          setCart([]);
-          setActiveTab('welcome');
-          showNotification('退店・リセットが完了しました');
-        }
-      };
-
-      const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-      const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-      const filteredProducts = selectedCategory === 'all' 
-        ? PRODUCTS 
-        : PRODUCTS.filter(p => p.category === selectedCategory);
+      const myTotalAmount = myOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
       return (
-        <div style={{ maxWidth: '480px', margin: '0 auto', background: '#fff', minHeight: '100vh', boxShadow: '0 0 20px rgba(0,0,0,0.05)', position: 'relative' }}>
-          {toast && <div className="toast">{toast}</div>}
+        <div style={{ maxWidth: '480px', margin: '0 auto', padding: '16px' }}>
+          {/* ヘッダーエリア */}
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: '20px', color: '#00a8ff' }}>📱 {t.title}</h1>
+              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{t.table} : {tableNo}</span>
+            </div>
 
-          <header style={{ background: 'linear-gradient(135deg, #ff9f43, #ff5252)', color: '#fff', padding: '16px', textAlign: 'center', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
-            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>🍔 MOBILE ORDER</h1>
-            <div style={{ fontSize: '13px', marginTop: '4px', opacity: 0.9 }}>テーブル番号: {tableNo}</div>
+            {/* 10. 言語切り替え */}
+            <button
+              onClick={() => { soundEffects.lang(); setLang(lang === 'ja' ? 'en' : 'ja'); }}
+              style={{ background: '#2f3640', color: '#fff', padding: '6px 12px', fontSize: '12px' }}
+            >
+              🌐 {lang === 'ja' ? 'English' : '日本語'}
+            </button>
           </header>
 
-          <main style={{ padding: '20px', paddingBottom: activeTab === 'checkout' ? '40px' : '120px' }}>
-            {activeTab === 'welcome' && (
-              <div style={{ textAlign: 'center', paddingTop: '20px' }}>
-                <h2 style={{ fontSize: '24px', color: '#ff6b6b', marginBottom: '8px' }}>いらっしゃいませ！✨</h2>
-                <p style={{ color: '#666', fontSize: '14px', marginBottom: '32px' }}>カテゴリを選んでご注文を開始してください</p>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <button onClick={() => { setSelectedCategory('main'); setActiveTab('menu'); }} style={{ background: '#ffeaa7', padding: '24px 12px', fontSize: '18px', color: '#d63031' }}>
-                    🍔 メイン
-                  </button>
-                  <button onClick={() => { setSelectedCategory('dessert'); setActiveTab('menu'); }} style={{ background: '#ffcaa6', padding: '24px 12px', fontSize: '18px', color: '#e17055' }}>
-                    🍨 デザート
-                  </button>
-                  <button onClick={() => { setSelectedCategory('drink'); setActiveTab('menu'); }} style={{ background: '#81ecec', padding: '24px 12px', fontSize: '18px', color: '#00cec9' }}>
-                    🥤 ドリンク
-                  </button>
-                  <button onClick={() => { setSelectedCategory('other'); setActiveTab('menu'); }} style={{ background: '#dfe6e9', padding: '24px 12px', fontSize: '18px', color: '#636e72' }}>
-                    ✨ その他
-                  </button>
-                </div>
+          {/* 9. ワンタップ呼び出しボタン */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <button onClick={() => callStaff(t.water)} style={{ flex: 1, background: '#74b9ff', color: '#fff', padding: '8px', fontSize: '12px' }}>
+              💧 {t.water}
+            </button>
+            <button onClick={() => callStaff(t.spoons)} style={{ flex: 1, background: '#a29bfe', color: '#fff', padding: '8px', fontSize: '12px' }}>
+              🍽️ {t.spoons}
+            </button>
+            <button onClick={() => { soundEffects.click(); setShowSplit(!showSplit); }} style={{ flex: 1, background: '#fd79a8', color: '#fff', padding: '8px', fontSize: '12px' }}>
+              🧮 {t.dutch}
+            </button>
+          </div>
+
+          {/* 8. 割り勘計算機 */}
+          {showSplit && (
+            <div style={{ background: '#fff', padding: '12px', borderRadius: '12px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>🧮 {t.dutch}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>人数:</span>
+                <button onClick={() => setSplitCount(Math.max(1, splitCount - 1))} style={{ padding: '4px 8px' }}>-</button>
+                <strong>{splitCount}名</strong>
+                <button onClick={() => setSplitCount(splitCount + 1)} style={{ padding: '4px 8px' }}>+</button>
               </div>
-            )}
-
-            {activeTab === 'menu' && (
-              <div>
-                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '16px' }}>
-                  {[
-                    { id: 'all', label: 'すべて' },
-                    { id: 'main', label: 'メイン' },
-                    { id: 'dessert', label: 'デザート' },
-                    { id: 'drink', label: 'ドリンク' },
-                    { id: 'other', label: 'その他' }
-                  ].map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.id)}
-                      style={{
-                        padding: '6px 14px',
-                        fontSize: '13px',
-                        background: selectedCategory === cat.id ? '#ff6b6b' : '#f1f2f6',
-                        color: selectedCategory === cat.id ? '#fff' : '#2f3640',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-
-                {filteredProducts.map((product) => (
-                  <div key={product.id} style={{ display: 'flex', alignItems: 'center', background: '#fff9f0', padding: '14px', borderRadius: '16px', marginBottom: '12px', border: '1px solid #ffeaa7' }}>
-                    <span style={{ fontSize: '32px', marginRight: '12px' }}>{product.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 'bold' }}>{product.name}</div>
-                      <div style={{ color: '#ff5252', fontWeight: 'bold' }}>¥{product.price.toLocaleString()}</div>
-                    </div>
-                    <button onClick={() => addToCart(product)} style={{ background: '#ff9f43', color: '#fff', padding: '8px 16px', fontSize: '14px' }}>
-                      追加
-                    </button>
-                  </div>
-                ))}
+              <div style={{ marginTop: '8px', fontSize: '16px', fontWeight: 'bold', color: '#e84118' }}>
+                1人あたり: 約 ¥{Math.ceil(myTotalAmount / (splitCount || 1)).toLocaleString()}
               </div>
-            )}
-
-            {activeTab === 'cart' && (
-              <div>
-                <h2 style={{ fontSize: '18px', color: '#ff6b6b', marginTop: 0 }}>カートの確認</h2>
-                {cart.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#aaa', marginTop: '40px' }}>カートは空です 🛒</p>
-                ) : (
-                  <div>
-                    {cart.map((item) => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', padding: '12px 0' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold' }}>{item.name}</div>
-                          <div style={{ color: '#888', fontSize: '13px' }}>¥{item.price.toLocaleString()}</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button onClick={() => updateQuantity(item.id, -1)} style={{ background: '#eee', color: '#333', width: '28px', height: '28px' }}>-</button>
-                          <span style={{ fontWeight: 'bold' }}>{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, 1)} style={{ background: '#eee', color: '#333', width: '28px', height: '28px' }}>+</button>
-                        </div>
-                      </div>
-                    ))}
-                    <div style={{ marginTop: '24px', textAlign: 'right', fontSize: '20px', fontWeight: '800', color: '#ff5252' }}>
-                      小計: ¥{cartTotal.toLocaleString()}
-                    </div>
-                    <button onClick={submitOrder} style={{ width: '100%', background: '#ff5252', color: '#fff', padding: '14px', fontSize: '16px', marginTop: '16px', boxShadow: '0 4px 12px rgba(255,82,82,0.3)' }}>
-                      注文を確定する
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'checkout' && (
-              <div style={{ textAlign: 'center', paddingTop: '20px' }}>
-                <div style={{ fontSize: '48px', marginBottom: '8px' }}>💳</div>
-                <h2 style={{ fontSize: '22px', color: '#2f3640', marginBottom: '24px' }}>お会計のお願い</h2>
-                
-                <div style={{ background: '#fff9f0', border: '2px dashed #ff9f43', borderRadius: '20px', padding: '24px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>お支払い合計金額</div>
-                  <div style={{ fontSize: '42px', fontWeight: '800', color: '#ff5252', letterSpacing: '1px' }}>
-                    ¥{orderedTotal.toLocaleString()}
-                  </div>
-                </div>
-
-                <p style={{ color: '#666', fontSize: '14px', lineHeight: '1.6', marginBottom: '40px' }}>
-                  伝票をお持ちの上、レジまでお越しください。<br />
-                  ご来店ありがとうございました！✨
-                </p>
-
-                <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #eee' }}>
-                  <button 
-                    onClick={handleStaffReset} 
-                    style={{ width: '100%', background: '#718093', color: '#fff', padding: '14px', fontSize: '14px' }}
-                  >
-                    【店員専用】お会計完了・テーブルリセット
-                  </button>
-                </div>
-              </div>
-            )}
-          </main>
-
-          {activeTab !== 'checkout' && (
-            <footer style={{ position: 'fixed', bottom: 0, width: '100%', maxWidth: '480px', background: '#fff', borderTop: '2px solid #ffeaa7', display: 'flex', gap: '8px', padding: '10px 16px', boxSizing: 'border-box' }}>
-              <button onClick={() => setActiveTab('menu')} style={{ flex: 1, padding: '10px', background: activeTab === 'menu' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}>
-                メニュー
-              </button>
-              
-              <div style={{ flex: 1, position: 'relative' }}>
-                {showBubble && activeTab !== 'cart' && (
-                  <div className="tooltip-bubble">確定を押してください！</div>
-                )}
-                <button 
-                  onClick={() => { setActiveTab('cart'); setShowBubble(false); }} 
-                  style={{ width: '100%', height: '100%', padding: '10px', background: activeTab === 'cart' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}
-                >
-                  カート {cartItemCount > 0 && <span style={{ background: '#ff5252', color: '#fff', borderRadius: '10px', padding: '2px 6px', fontSize: '11px', marginLeft: '4px' }}>{cartItemCount}</span>}
-                </button>
-              </div>
-
-              <button 
-                onClick={requestCheckout} 
-                disabled={orderedTotal === 0}
-                style={{ flex: 1, padding: '10px', background: '#54a0ff', color: '#fff' }}
-              >
-                お会計
-              </button>
-            </footer>
+            </div>
           )}
+
+          {/* 2. カテゴリ切り替え */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            {['all', 'food', 'drink'].map(cat => (
+              <button
+                key={cat}
+                onClick={() => { soundEffects.click(); setCategory(cat); }}
+                style={{
+                  flex: 1,
+                  background: category === cat ? '#00a8ff' : '#e1b12c',
+                  color: '#fff',
+                  padding: '8px'
+                }}
+              >
+                {cat === 'all' ? 'すべて' : cat === 'food' ? '🍳 フード' : '🍺 ドリンク'}
+              </button>
+            ))}
+          </div>
+
+          {/* 5. レコメンド（おすすめ表示） */}
+          <div style={{ background: '#fff3bf', padding: '10px 14px', borderRadius: '12px', marginBottom: '16px', fontSize: '12px' }}>
+            <strong>{t.recommend}:</strong> 特製醤油ラーメンと一緒に「生ビール」がよく頼まれています！
+          </div>
+
+          {/* メニューリスト */}
+          <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
+            {menuData.filter(m => category === 'all' || m.category === category).map(menu => {
+              const isSoldOut = soldOuts.includes(menu.name.ja);
+
+              return (
+                <div key={menu.id} style={{ background: '#fff', padding: '12px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <strong style={{ fontSize: '16px' }}>{menu.name[lang]}</strong>
+                      {/* 6. ハイライトバッジ */}
+                      {menu.highlight && <span className="badge-highlight">{menu.highlight}</span>}
+                    </div>
+                    {/* 3. 説明 & アレルゲン表記 */}
+                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>{menu.desc}</div>
+                    <div style={{ fontSize: '10px', color: '#e84118' }}>{t.allergy}: {menu.allergy}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2f3640', marginTop: '4px' }}>¥{menu.price}</div>
+                  </div>
+
+                  <button
+                    disabled={isSoldOut}
+                    onClick={() => { soundEffects.click(); setSelectedItem(menu); }}
+                    style={{
+                      background: isSoldOut ? '#718093' : '#00a8ff',
+                      color: '#fff',
+                      padding: '8px 16px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    {isSoldOut ? '完売中' : '選択'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 7. カスタマイズモーダル */}
+          {selectedItem && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+              <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', width: '100%', maxWidth: '360px' }}>
+                <h3 style={{ margin: '0 0 12px 0' }}>{selectedItem.name[lang]} - {t.customize}</h3>
+
+                {selectedItem.category === 'food' && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>麺のかたさ:</label>
+                    <select value={customOptions.noodle} onChange={e => setCustomOptions({ ...customOptions, noodle: e.target.value })} style={{ width: '100%', padding: '8px' }}>
+                      <option>かため</option>
+                      <option>普通</option>
+                      <option>やわらかめ</option>
+                    </select>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <button onClick={() => setSelectedItem(null)} style={{ flex: 1, background: '#718093', color: '#fff', padding: '10px' }}>キャンセル</button>
+                  <button onClick={() => addToCart(selectedItem)} style={{ flex: 1, background: '#4cd137', color: '#fff', padding: '10px' }}>カートに追加</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. カート可視化 & 1. リアルタイム注文ステータス */}
+          {cart.length > 0 && (
+            <div style={{ background: '#2f3640', color: '#fff', padding: '12px', borderRadius: '12px', marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>🛒 {t.cart} ({cart.length}件)</div>
+              <button onClick={submitOrder} style={{ width: '100%', background: '#4cd137', color: '#fff', padding: '12px', fontSize: '16px' }}>
+                {t.orderBtn}
+              </button>
+            </div>
+          )}
+
+          {/* 1. リアルタイム注文状況モニタリング */}
+          <div style={{ background: '#fff', padding: '12px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#00a8ff' }}>🔄 {t.status}</div>
+            {myOrders.length === 0 ? (
+              <div style={{ fontSize: '12px', color: '#aaa' }}>注文履歴はありません。</div>
+            ) : (
+              myOrders.map(order => (
+                <div key={order.orderId} style={{ borderBottom: '1px solid #eee', padding: '8px 0', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{order.items.map(i => i.name).join(', ')}</span>
+                    <strong style={{ color: order.status === 'completed' ? '#4cd137' : order.status === 'preparing' ? '#fbc531' : '#e84118' }}>
+                      {order.status === 'completed' ? '✓ 提供完了' : order.status === 'preparing' ? '🍳 調理中' : '⏳ 受付済'}
+                    </strong>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {myTotalAmount > 0 && (
+              <button onClick={requestCheckout} style={{ width: '100%', background: '#e84118', color: '#fff', padding: '10px', marginTop: '12px', fontSize: '14px' }}>
+                🔔 {t.checkout} (合計: ¥{myTotalAmount.toLocaleString()})
+              </button>
+            )}
+          </div>
         </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<CustomerApp />);
+    ReactDOM.createRoot(document.getElementById('root')).render(<MobileOrderApp />);
   </script>
 </body>
 </html>
