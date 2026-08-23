@@ -9,22 +9,30 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: 'M PLUS Rounded 1c', sans-serif;
-      background-color: #f5f6fa;
+      background-color: #f7f9fa;
       color: #2f3640;
       user-select: none;
+      padding-bottom: 90px;
     }
     button {
       font-family: 'M PLUS Rounded 1c', sans-serif;
       cursor: pointer;
       border: none;
-      border-radius: 8px;
-      font-weight: bold;
-      transition: transform 0.1s, opacity 0.2s;
+      border-radius: 12px;
+      font-weight: 800;
+      transition: all 0.15s ease;
     }
     button:active { transform: scale(0.95); }
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
   </style>
 </head>
 <body>
@@ -60,10 +68,10 @@
     };
 
     const menuData = [
-      { id: 1, name: { ja: '特製醤油ラーメン', en: 'Shoyu Ramen' }, price: 980, category: 'food', highlight: '人気No.1', allergy: '小麦・大豆', desc: 'コク深いスープ' },
-      { id: 2, name: { ja: '黄金チャーハン', en: 'Fried Rice' }, price: 750, category: 'food', highlight: '絶品', allergy: '卵・豚肉', desc: 'パラパラ食感' },
-      { id: 3, name: { ja: '生ビール', en: 'Draft Beer' }, price: 550, category: 'drink', highlight: '人気', allergy: 'なし', desc: 'キンキンです' },
-      { id: 4, name: { ja: '烏龍茶', en: 'Oolong Tea' }, price: 300, category: 'drink', highlight: '', allergy: 'なし', desc: 'さっぱり' }
+      { id: 1, name: { ja: '特製醤油ラーメン', en: 'Shoyu Ramen' }, price: 980, category: 'food', highlight: '人気No.1', desc: '濃厚なコクの絶品スープ' },
+      { id: 2, name: { ja: '黄金チャーハン', en: 'Fried Rice' }, price: 750, category: 'food', highlight: 'おすすめ', desc: 'パラパラ食感の定番' },
+      { id: 3, name: { ja: '生ビール', en: 'Draft Beer' }, price: 550, category: 'drink', highlight: '冷えてます', desc: '喉越し抜群のビール' },
+      { id: 4, name: { ja: '烏龍茶', en: 'Oolong Tea' }, price: 300, category: 'drink', highlight: '', desc: 'さっぱりお口直し' }
     ];
 
     function MobileOrderApp() {
@@ -73,7 +81,6 @@
       const [cart, setCart] = useState([]);
       const [myOrders, setMyOrders] = useState([]);
       const [soldOuts, setSoldOuts] = useState([]);
-      const [selectedItem, setSelectedItem] = useState(null);
       const [showSplit, setShowSplit] = useState(false);
       const [splitCount, setSplitCount] = useState(2);
 
@@ -97,7 +104,6 @@
       const addToCart = (item) => {
         soundEffects.add();
         setCart([...cart, { ...item, cartId: Date.now() }]);
-        setSelectedItem(null);
       };
 
       const submitOrder = () => {
@@ -137,89 +143,96 @@
       const myTotalAmount = myOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
       return (
-        <div style={{ maxWidth: '480px', margin: '0 auto', padding: '16px' }}>
+        <div style={{ maxWidth: '440px', margin: '0 auto', padding: '16px' }}>
+          {/* ヘッダー */}
           <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: '22px', color: '#e1b12c' }}>📱 Mobile Order</h1>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#718093' }}>卓番: {tableNo} 番卓</span>
+              <h1 style={{ margin: 0, fontSize: '20px', color: '#f59e0b', fontWeight: '800' }}>📱 Mobile Order</h1>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#6b7280' }}>卓番 : {tableNo} 番卓</span>
             </div>
 
-            <button onClick={() => { soundEffects.click(); setLang(lang === 'ja' ? 'en' : 'ja'); }} style={{ background: '#718093', color: '#fff', padding: '6px 12px', fontSize: '12px' }}>
+            <button onClick={() => { soundEffects.click(); setLang(lang === 'ja' ? 'en' : 'ja'); }} style={{ background: '#e5e7eb', color: '#374151', padding: '6px 12px', fontSize: '12px' }}>
               🌐 {lang === 'ja' ? 'English' : '日本語'}
             </button>
           </header>
 
+          {/* 店員呼び出し & 割り勘 */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            <button onClick={() => { soundEffects.call(); alert('お水をリクエストしました！'); }} style={{ flex: 1, background: '#00a8ff', color: '#fff', padding: '8px', fontSize: '12px' }}>💧 お水</button>
-            <button onClick={() => { soundEffects.call(); alert('取り皿をリクエストしました！'); }} style={{ flex: 1, background: '#9c88ff', color: '#fff', padding: '8px', fontSize: '12px' }}>🍽️ 取り皿</button>
-            <button onClick={() => { soundEffects.click(); setShowSplit(!showSplit); }} style={{ flex: 1, background: '#e84118', color: '#fff', padding: '8px', fontSize: '12px' }}>🧮 割り勘</button>
+            <button onClick={() => { soundEffects.call(); alert('お水をリクエストしました！'); }} style={{ flex: 1, background: '#3b82f6', color: '#fff', padding: '10px', fontSize: '13px' }}>💧 お水</button>
+            <button onClick={() => { soundEffects.call(); alert('取り皿をリクエストしました！'); }} style={{ flex: 1, background: '#8b5cf6', color: '#fff', padding: '10px', fontSize: '13px' }}>🍽️ 取り皿</button>
+            <button onClick={() => { soundEffects.click(); setShowSplit(!showSplit); }} style={{ flex: 1, background: '#ef4444', color: '#fff', padding: '10px', fontSize: '13px' }}>🧮 割り勘</button>
           </div>
 
+          {/* 割り勘表示 */}
           {showSplit && (
-            <div style={{ background: '#fff', padding: '12px', borderRadius: '12px', marginBottom: '16px', border: '2px solid #e84118' }}>
-              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>🧮 割り勘計算</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '8px 0' }}>
+            <div className="card" style={{ marginBottom: '16px', border: '2px solid #ef4444' }}>
+              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>🧮 割り勘計算機</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '8px 0' }}>
                 <span>人数:</span>
-                <button onClick={() => setSplitCount(Math.max(1, splitCount - 1))} style={{ padding: '4px 8px' }}>-</button>
-                <strong>{splitCount}名</strong>
-                <button onClick={() => setSplitCount(splitCount + 1)} style={{ padding: '4px 8px' }}>+</button>
+                <button onClick={() => setSplitCount(Math.max(1, splitCount - 1))} style={{ padding: '6px 12px', background: '#e5e7eb' }}>-</button>
+                <strong style={{ fontSize: '16px' }}>{splitCount} 名</strong>
+                <button onClick={() => setSplitCount(splitCount + 1)} style={{ padding: '6px 12px', background: '#e5e7eb' }}>+</button>
               </div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#e84118' }}>
+              <div style={{ fontSize: '16px', fontWeight: '800', color: '#ef4444' }}>
                 1人あたり: 約 ¥{Math.ceil(myTotalAmount / (splitCount || 1)).toLocaleString()}
               </div>
             </div>
           )}
 
+          {/* カテゴリ切替 */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             {['all', 'food', 'drink'].map(cat => (
-              <button key={cat} onClick={() => { soundEffects.click(); setCategory(cat); }} style={{ flex: 1, background: category === cat ? '#e1b12c' : '#718093', color: '#fff', padding: '10px' }}>
+              <button key={cat} onClick={() => { soundEffects.click(); setCategory(cat); }} style={{ flex: 1, background: category === cat ? '#f59e0b' : '#e5e7eb', color: category === cat ? '#fff' : '#374151', padding: '10px', fontSize: '13px' }}>
                 {cat === 'all' ? 'すべて' : cat === 'food' ? '🍳 フード' : '🍺 ドリンク'}
               </button>
             ))}
           </div>
 
-          <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
+          {/* メニューリスト */}
+          <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
             {menuData.filter(m => category === 'all' || m.category === category).map(menu => {
               const isSoldOut = soldOuts.includes(menu.name.ja);
 
               return (
-                <div key={menu.id} style={{ background: '#fff', padding: '14px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
+                <div key={menu.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <strong style={{ fontSize: '16px' }}>{menu.name[lang]}</strong>
-                      {menu.highlight && <span style={{ background: '#e84118', color: '#fff', padding: '2px 6px', borderRadius: '6px', fontSize: '10px' }}>{menu.highlight}</span>}
+                      {menu.highlight && <span style={{ background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold' }}>{menu.highlight}</span>}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#718093', marginTop: '2px' }}>{menu.desc}</div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#e1b12c', marginTop: '4px' }}>¥{menu.price}</div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{menu.desc}</div>
+                    <div style={{ fontSize: '15px', fontWeight: '800', color: '#f59e0b', marginTop: '4px' }}>¥{menu.price}</div>
                   </div>
 
-                  <button disabled={isSoldOut} onClick={() => addToCart(menu)} style={{ background: isSoldOut ? '#718093' : '#e1b12c', color: '#fff', padding: '8px 16px' }}>
-                    {isSoldOut ? '完売中' : '追加'}
+                  <button disabled={isSoldOut} onClick={() => addToCart(menu)} style={{ background: isSoldOut ? '#9ca3af' : '#f59e0b', color: '#fff', padding: '10px 18px', fontSize: '14px' }}>
+                    {isSoldOut ? '完売中' : 'カート追加'}
                   </button>
                 </div>
               );
             })}
           </div>
 
+          {/* カート固定エリア */}
           {cart.length > 0 && (
-            <div style={{ background: '#2f3640', color: '#fff', padding: '14px', borderRadius: '12px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>🛒 カート ({cart.length}点)</div>
-              <button onClick={submitOrder} style={{ width: '100%', background: '#4cd137', color: '#fff', padding: '12px', fontSize: '16px' }}>
-                注文を確定する
+            <div className="card" style={{ background: '#1f2937', color: '#fff', marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>🛒 カート内の商品 ({cart.length}点)</div>
+              <button onClick={submitOrder} style={{ width: '100%', background: '#10b981', color: '#fff', padding: '12px', fontSize: '16px' }}>
+                注文を送信する
               </button>
             </div>
           )}
 
-          <div style={{ background: '#fff', padding: '14px', borderRadius: '12px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#e1b12c' }}>🔄 注文履歴・リアルタイム状況</div>
+          {/* 注文状態モニター */}
+          <div className="card">
+            <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#f59e0b' }}>🔄 リアルタイム注文状況</div>
             {myOrders.length === 0 ? (
-              <div style={{ fontSize: '12px', color: '#aaa' }}>まだ注文はありません。</div>
+              <div style={{ fontSize: '12px', color: '#9ca3af' }}>注文履歴はありません。</div>
             ) : (
               myOrders.map(order => (
-                <div key={order.orderId} style={{ borderBottom: '1px solid #f1f2f6', padding: '8px 0', fontSize: '13px' }}>
+                <div key={order.orderId} style={{ borderBottom: '1px solid #f3f4f6', padding: '8px 0', fontSize: '13px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>{order.items.map(i => i.name).join(', ')}</span>
-                    <strong style={{ color: order.status === 'completed' ? '#4cd137' : order.status === 'preparing' ? '#fbc531' : '#e84118' }}>
+                    <strong style={{ color: order.status === 'completed' ? '#10b981' : order.status === 'preparing' ? '#f59e0b' : '#ef4444' }}>
                       {order.status === 'completed' ? '✓ 提供完了' : order.status === 'preparing' ? '🍳 調理中' : '⏳ 受付済'}
                     </strong>
                   </div>
@@ -228,7 +241,7 @@
             )}
 
             {myTotalAmount > 0 && (
-              <button onClick={requestCheckout} style={{ width: '100%', background: '#e84118', color: '#fff', padding: '12px', marginTop: '12px', fontSize: '15px' }}>
+              <button onClick={requestCheckout} style={{ width: '100%', background: '#ef4444', color: '#fff', padding: '12px', marginTop: '12px', fontSize: '15px' }}>
                 🔔 お会計を呼ぶ (合計: ¥{myTotalAmount.toLocaleString()})
               </button>
             )}
