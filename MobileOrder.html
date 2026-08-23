@@ -23,7 +23,12 @@
       font-weight: bold;
       transition: transform 0.1s, opacity 0.2s;
     }
-    button:active { transform: scale(0.96); }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    button:active:not(:disabled) { transform: scale(0.96); }
+    
     .toast {
       position: fixed;
       top: 20px;
@@ -38,25 +43,64 @@
       z-index: 1000;
       animation: fadeIn 0.3s ease;
     }
+
+    /* カートボタン上の吹き出し */
+    .tooltip-bubble {
+      position: absolute;
+      top: -45px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ff5252;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      white-space: nowrap;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      animation: bounce 0.6s infinite alternate;
+      z-index: 100;
+    }
+    .tooltip-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 6px 0;
+      border-style: solid;
+      border-color: #ff5252 transparent;
+      display: block;
+      width: 0;
+    }
+
     @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes bounce { from { transform: translate(-50%, 0); } to { transform: translate(-50%, -6px); } }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState } = React;
 
     const PRODUCTS = [
-      { id: 'item-01', name: '絶品チーズバーガー', price: 680, icon: '🍔' },
-      { id: 'item-02', name: 'サクサクポテト (L)', price: 380, icon: '🍟' },
-      { id: 'item-03', name: '濃厚アイスコーヒー', price: 300, icon: '🥤' }
+      { id: 'item-01', name: '絶品チーズバーガー', price: 680, category: 'main', icon: '🍔' },
+      { id: 'item-02', name: '濃厚てりやきバーガー', price: 650, category: 'main', icon: '🍔' },
+      { id: 'item-03', name: 'サクサクポテト (L)', price: 380, category: 'side', icon: '🍟' },
+      { id: 'item-04', name: '濃厚アイスクリーム', price: 350, category: 'dessert', icon: '🍨' },
+      { id: 'item-05', name: 'チョコパフェ', price: 580, category: 'dessert', icon: '🍧' },
+      { id: 'item-06', name: '濃厚アイスコーヒー', price: 300, category: 'drink', icon: '🥤' },
+      { id: 'item-07', name: 'オレンジジュース', price: 280, category: 'drink', icon: '🍊' },
+      { id: 'item-08', name: 'おしぼり追加', price: 0, category: 'other', icon: '🧻' },
     ];
 
     function CustomerApp() {
       const [cart, setCart] = useState([]);
       const [toast, setToast] = useState('');
-      const [activeTab, setActiveTab] = useState('menu');
+      const [showBubble, setShowBubble] = useState(false);
+      const [activeTab, setActiveTab] = useState('welcome'); // 'welcome' | 'menu' | 'cart'
+      const [selectedCategory, setSelectedCategory] = useState('all');
       const tableNo = 5;
 
       const showNotification = (msg) => {
@@ -73,6 +117,7 @@
           return [...prev, { ...product, quantity: 1 }];
         });
         showNotification(`✨ ${product.name} を追加しました！`);
+        setShowBubble(true); // 吹き出しを表示
       };
 
       const updateQuantity = (id, delta) => {
@@ -95,24 +140,23 @@
           orderId: `ORD-${Date.now().toString().slice(-4)}`,
           tableNo,
           items: cart,
-          totalAmount,
+          totalAmount: totalAmount,
           status: 'pending',
           createdAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
         };
 
-        // ローカルストレージを使って厨房にデータを共有
         const existingOrders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
         localStorage.setItem('restaurant_orders', JSON.stringify([newOrder, ...existingOrders]));
 
         setCart([]);
+        setShowBubble(false);
         showNotification('🎉 注文を送信しました！');
         setActiveTab('menu');
       };
 
       const requestCheckout = () => {
-        const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        
-        // 会計リクエストを作成
+        if (cartItemCount === 0) return;
+
         const checkoutReq = {
           tableNo,
           requestedAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
@@ -128,6 +172,10 @@
       const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
       const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+      const filteredProducts = selectedCategory === 'all' 
+        ? PRODUCTS 
+        : PRODUCTS.filter(p => p.category === selectedCategory);
+
       return (
         <div style={{ maxWidth: '480px', margin: '0 auto', background: '#fff', minHeight: '100vh', boxShadow: '0 0 20px rgba(0,0,0,0.05)', position: 'relative' }}>
           {toast && <div className="toast">{toast}</div>}
@@ -140,10 +188,58 @@
 
           {/* メインエリア */}
           <main style={{ padding: '20px', paddingBottom: '120px' }}>
+            {/* いらっしゃいませ（初期画面） */}
+            {activeTab === 'welcome' && (
+              <div style={{ textAlign: 'center', paddingTop: '20px' }}>
+                <h2 style={{ fontSize: '24px', color: '#ff6b6b', marginBottom: '8px' }}>いらっしゃいませ！✨</h2>
+                <p style={{ color: '#666', fontSize: '14px', marginBottom: '32px' }}>カテゴリを選んでご注文を開始してください</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <button onClick={() => { setSelectedCategory('main'); setActiveTab('menu'); }} style={{ background: '#ffeaa7', padding: '24px 12px', fontSize: '18px', color: '#d63031' }}>
+                    🍔 メイン
+                  </button>
+                  <button onClick={() => { setSelectedCategory('dessert'); setActiveTab('menu'); }} style={{ background: '#ffcaa6', padding: '24px 12px', fontSize: '18px', color: '#e17055' }}>
+                    🍨 デザート
+                  </button>
+                  <button onClick={() => { setSelectedCategory('drink'); setActiveTab('menu'); }} style={{ background: '#81ecec', padding: '24px 12px', fontSize: '18px', color: '#00cec9' }}>
+                    🥤 ドリンク
+                  </button>
+                  <button onClick={() => { setSelectedCategory('other'); setActiveTab('menu'); }} style={{ background: '#dfe6e9', padding: '24px 12px', fontSize: '18px', color: '#636e72' }}>
+                    ✨ その他
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* メニュー画面 */}
             {activeTab === 'menu' && (
               <div>
-                <h2 style={{ fontSize: '18px', color: '#ff6b6b', marginTop: 0 }}>メニュー</h2>
-                {PRODUCTS.map((product) => (
+                {/* カテゴリ切り替えタブ */}
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '16px' }}>
+                  {[
+                    { id: 'all', label: 'すべて' },
+                    { id: 'main', label: 'メイン' },
+                    { id: 'dessert', label: 'デザート' },
+                    { id: 'drink', label: 'ドリンク' },
+                    { id: 'other', label: 'その他' }
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      style={{
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        background: selectedCategory === cat.id ? '#ff6b6b' : '#f1f2f6',
+                        color: selectedCategory === cat.id ? '#fff' : '#2f3640',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {filteredProducts.map((product) => (
                   <div key={product.id} style={{ display: 'flex', alignItems: 'center', background: '#fff9f0', padding: '14px', borderRadius: '16px', marginBottom: '12px', border: '1px solid #ffeaa7' }}>
                     <span style={{ fontSize: '32px', marginRight: '12px' }}>{product.icon}</span>
                     <div style={{ flex: 1 }}>
@@ -158,6 +254,7 @@
               </div>
             )}
 
+            {/* カート画面 */}
             {activeTab === 'cart' && (
               <div>
                 <h2 style={{ fontSize: '18px', color: '#ff6b6b', marginTop: 0 }}>カートの確認</h2>
@@ -195,10 +292,24 @@
             <button onClick={() => setActiveTab('menu')} style={{ flex: 1, padding: '10px', background: activeTab === 'menu' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}>
               メニュー
             </button>
-            <button onClick={() => setActiveTab('cart')} style={{ flex: 1, padding: '10px', background: activeTab === 'cart' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32', position: 'relative' }}>
-              カート {cartItemCount > 0 && <span style={{ background: '#ff5252', color: '#fff', borderRadius: '10px', padding: '2px 6px', fontSize: '11px', marginLeft: '4px' }}>{cartItemCount}</span>}
-            </button>
-            <button onClick={requestCheckout} style={{ flex: 1, padding: '10px', background: '#54a0ff', color: '#fff' }}>
+            
+            <div style={{ flex: 1, position: 'relative' }}>
+              {showBubble && activeTab !== 'cart' && (
+                <div className="tooltip-bubble">確定を押してください！</div>
+              )}
+              <button 
+                onClick={() => { setActiveTab('cart'); setShowBubble(false); }} 
+                style={{ width: '100%', height: '100%', padding: '10px', background: activeTab === 'cart' ? '#ffeaa7' : '#f5f5f5', color: '#4a3b32' }}
+              >
+                カート {cartItemCount > 0 && <span style={{ background: '#ff5252', color: '#fff', borderRadius: '10px', padding: '2px 6px', fontSize: '11px', marginLeft: '4px' }}>{cartItemCount}</span>}
+              </button>
+            </div>
+
+            <button 
+              onClick={requestCheckout} 
+              disabled={cartItemCount === 0}
+              style={{ flex: 1, padding: '10px', background: '#54a0ff', color: '#fff' }}
+            >
               お会計
             </button>
           </footer>
