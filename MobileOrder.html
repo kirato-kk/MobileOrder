@@ -44,7 +44,6 @@
       animation: fadeIn 0.3s ease;
     }
 
-    /* カートボタン上の吹き出し */
     .tooltip-bubble {
       position: absolute;
       top: -45px;
@@ -82,7 +81,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect } = React;
 
     const PRODUCTS = [
       { id: 'item-01', name: '絶品チーズバーガー', price: 680, category: 'main', icon: '🍔' },
@@ -99,8 +98,9 @@
       const [cart, setCart] = useState([]);
       const [toast, setToast] = useState('');
       const [showBubble, setShowBubble] = useState(false);
-      const [activeTab, setActiveTab] = useState('welcome'); // 'welcome' | 'menu' | 'cart'
+      const [activeTab, setActiveTab] = useState('welcome');
       const [selectedCategory, setSelectedCategory] = useState('all');
+      const [orderedTotal, setOrderedTotal] = useState(0); // 確定済み注文の合計金額
       const tableNo = 5;
 
       const showNotification = (msg) => {
@@ -117,7 +117,7 @@
           return [...prev, { ...product, quantity: 1 }];
         });
         showNotification(`✨ ${product.name} を追加しました！`);
-        setShowBubble(true); // 吹き出しを表示
+        setShowBubble(true);
       };
 
       const updateQuantity = (id, delta) => {
@@ -148,6 +148,8 @@
         const existingOrders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
         localStorage.setItem('restaurant_orders', JSON.stringify([newOrder, ...existingOrders]));
 
+        // 確定済み金額に加算
+        setOrderedTotal((prev) => prev + totalAmount);
         setCart([]);
         setShowBubble(false);
         showNotification('🎉 注文を送信しました！');
@@ -155,10 +157,11 @@
       };
 
       const requestCheckout = () => {
-        if (cartItemCount === 0) return;
+        if (orderedTotal === 0) return;
 
         const checkoutReq = {
           tableNo,
+          totalAmount: orderedTotal,
           requestedAt: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
           status: 'checkout_requested'
         };
@@ -166,7 +169,7 @@
         const existingCheckouts = JSON.parse(localStorage.getItem('restaurant_checkouts') || '[]');
         localStorage.setItem('restaurant_checkouts', JSON.stringify([checkoutReq, ...existingCheckouts]));
 
-        alert('お会計リクエストを受け付けました。\n伝票をお持ちの上、レジへお越しください！');
+        alert(`お会計金額: ¥${orderedTotal.toLocaleString()}\n\nお会計リクエストを受け付けました。\n伝票をお持ちの上、レジへお越しください！`);
       };
 
       const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -188,7 +191,6 @@
 
           {/* メインエリア */}
           <main style={{ padding: '20px', paddingBottom: '120px' }}>
-            {/* いらっしゃいませ（初期画面） */}
             {activeTab === 'welcome' && (
               <div style={{ textAlign: 'center', paddingTop: '20px' }}>
                 <h2 style={{ fontSize: '24px', color: '#ff6b6b', marginBottom: '8px' }}>いらっしゃいませ！✨</h2>
@@ -211,10 +213,8 @@
               </div>
             )}
 
-            {/* メニュー画面 */}
             {activeTab === 'menu' && (
               <div>
-                {/* カテゴリ切り替えタブ */}
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '16px' }}>
                   {[
                     { id: 'all', label: 'すべて' },
@@ -254,7 +254,6 @@
               </div>
             )}
 
-            {/* カート画面 */}
             {activeTab === 'cart' && (
               <div>
                 <h2 style={{ fontSize: '18px', color: '#ff6b6b', marginTop: 0 }}>カートの確認</h2>
@@ -276,7 +275,7 @@
                       </div>
                     ))}
                     <div style={{ marginTop: '24px', textAlign: 'right', fontSize: '20px', fontWeight: '800', color: '#ff5252' }}>
-                      合計: ¥{cartTotal.toLocaleString()}
+                      小計: ¥{cartTotal.toLocaleString()}
                     </div>
                     <button onClick={submitOrder} style={{ width: '100%', background: '#ff5252', color: '#fff', padding: '14px', fontSize: '16px', marginTop: '16px', boxShadow: '0 4px 12px rgba(255,82,82,0.3)' }}>
                       注文を確定する
@@ -307,7 +306,7 @@
 
             <button 
               onClick={requestCheckout} 
-              disabled={cartItemCount === 0}
+              disabled={orderedTotal === 0}
               style={{ flex: 1, padding: '10px', background: '#54a0ff', color: '#fff' }}
             >
               お会計
